@@ -677,54 +677,38 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ========================================
-  // Dark Mode Toggle
+  // Privacy Policy Modal
   // ========================================
-  const darkModeToggle = document.getElementById('darkModeToggle');
+  const privacyModal = document.getElementById('privacyModal');
+  const privacyPolicyLink = document.getElementById('privacyPolicyLink');
+  const privacyModalClose = document.getElementById('privacyModalClose');
 
-  if (darkModeToggle) {
-    // Get site-specific storage key (must match the key in head script)
-    const getStorageKey = () => {
-      const metaBusinessName = document.querySelector('title')?.textContent?.split(' - ')[0] || 'default';
-      return 'siteTheme_' + metaBusinessName.replace(/[^a-zA-Z0-9]/g, '_');
-    };
+  if (privacyPolicyLink && privacyModal && privacyModalClose) {
+    privacyPolicyLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      privacyModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    });
 
-    // Detect the site's base theme (color, light, or dark)
-    const defaultTheme = '{{default_theme}}';
+    privacyModalClose.addEventListener('click', () => {
+      privacyModal.classList.remove('active');
+      document.body.style.overflow = '';
+    });
 
-    darkModeToggle.addEventListener('click', () => {
-      const storageKey = getStorageKey();
+    // Close on overlay click
+    const privacyOverlay = privacyModal.querySelector('.privacy-modal__overlay');
+    if (privacyOverlay) {
+      privacyOverlay.addEventListener('click', () => {
+        privacyModal.classList.remove('active');
+        document.body.style.overflow = '';
+      });
+    }
 
-      // Remove init class on first toggle to allow transitions
-      document.documentElement.classList.remove('dark-mode-init');
-
-      if (defaultTheme === 'color') {
-        // Color mode sites: toggle between color-mode and dark-mode (no plain light mode)
-        const isDark = document.documentElement.classList.contains('dark-mode');
-        if (isDark) {
-          // Switch back to color mode
-          document.documentElement.classList.remove('dark-mode');
-          document.body.classList.remove('dark-mode');
-          document.documentElement.classList.add('color-mode');
-          document.body.classList.add('color-mode');
-          localStorage.setItem(storageKey, 'color');
-        } else {
-          // Switch to dark mode
-          document.documentElement.classList.remove('color-mode');
-          document.body.classList.remove('color-mode');
-          document.documentElement.classList.add('dark-mode');
-          document.body.classList.add('dark-mode');
-          localStorage.setItem(storageKey, 'dark');
-        }
-      } else {
-        // Light/Dark mode sites: toggle between light and dark
-        document.documentElement.classList.toggle('dark-mode');
-        document.body.classList.toggle('dark-mode');
-
-        if (document.documentElement.classList.contains('dark-mode')) {
-          localStorage.setItem(storageKey, 'dark');
-        } else {
-          localStorage.setItem(storageKey, 'light');
-        }
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && privacyModal.classList.contains('active')) {
+        privacyModal.classList.remove('active');
+        document.body.style.overflow = '';
       }
     });
   }
@@ -759,5 +743,67 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   });
+
+  // ========================================
+  // Quote Form Handler
+  // ========================================
+  // Use distinct variable names to avoid conflict with the earlier animation `quoteForm` constant.
+  const quoteFormElement = document.getElementById('quoteForm');
+  const formMessageElement = document.getElementById('formMessage');
+
+  if (quoteFormElement && formMessageElement) {
+    // Set form timestamp when page loads
+    const timestampInput = document.getElementById('formTimestamp');
+    if (timestampInput) {
+      timestampInput.value = Date.now();
+    }
+
+    quoteFormElement.addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const submitButton = quoteFormElement.querySelector('button[type="submit"]');
+      if (!submitButton) return;
+      const originalButtonText = submitButton.textContent;
+
+      // Disable button and show loading state
+      submitButton.disabled = true;
+      submitButton.textContent = 'Sending...';
+      formMessageElement.textContent = '';
+      formMessageElement.className = 'form-message';
+
+      try {
+        const formData = new FormData(quoteFormElement);
+        const response = await fetch(quoteFormElement.action, {
+          method: 'POST',
+          body: new URLSearchParams(formData),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          formMessageElement.textContent = 'Thank you! We\'ll be in touch soon.';
+          formMessageElement.className = 'form-message form-message--success';
+          quoteFormElement.reset();
+
+          // Reset timestamp for potential resubmission
+          if (timestampInput) {
+            timestampInput.value = Date.now();
+          }
+        } else {
+          formMessageElement.textContent = 'Something went wrong. Please try again or call us directly.';
+          formMessageElement.className = 'form-message form-message--error';
+        }
+      } catch (error) {
+        formMessageElement.textContent = 'Network error. Please check your connection and try again.';
+        formMessageElement.className = 'form-message form-message--error';
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
+    });
+  }
 
 });
